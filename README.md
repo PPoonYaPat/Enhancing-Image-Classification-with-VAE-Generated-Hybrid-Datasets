@@ -28,23 +28,12 @@ Traditional CNN-based image classification relies on datasets where each trainin
 
 Below is a visualization of the latent space, where each cluster represents a class (e.g., TypeA and TypeB). These clusters are formed by encoding the original data into the latent space using the encoder of the VAE. A randomly selected point (`X`) is evaluated for its likelihood of belonging to each class. The decoded image is then labeled with these likelihoods and used for CNN training.
 
-<style>
-  img {
-    width: 75%;
-    height: auto;
-  }
-
-  @media (min-width: 560px) {
-    img {
-      max-width: 420px;
-      height: auto;
-    }
-  }
-</style>
 
 <div style="text-align: center; padding: 20px">
-    <img src="assets/Latent_Space.png" alt="2D Latent Space">
+    <img src="assets/Latent_Space.png" alt="2D Latent Space" width=350px>
 </div>
+
+
 
 
 - **Step 1**: Randomly pick a point in the latent space.
