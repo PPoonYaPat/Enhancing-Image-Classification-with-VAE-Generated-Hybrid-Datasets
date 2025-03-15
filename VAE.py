@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim.adam import Adam
+from torch.utils.data import DataLoader, TensorDataset
 import copy
 import time
 
@@ -59,32 +60,38 @@ class VAE(nn.Module):
         z = self.reparameterization(mean, logvar)
         x_hat = self.decode(z)
         return x_hat, mean, logvar
-
-    def hybrid_image(self, batch_size):
-        random_points = torch.rand_like(batch_size, 2).to(self.device)
-        self.eval()
-        with torch.no_grad():
-            results = self.decoder(random_points)
-        self.train()
-
-        # the return value should be reults and probability of the each of the result
-        # don't forget the rgb-channel
-
+    
     def loss(x, x_hat, mean, logvar):
         reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
         KLD = - 0.5 * torch.sum(1+ logvar - mean.pow(2) - logvar.exp())
         return reproduction_loss + KLD
+
+    # image: [number_of_images, 3, image_width, image_height], probability: [number_of_images, class_num]
+    def hybrid_image(self, number_of_images):
+        random_points = torch.rand_like(number_of_images, 2).to(self.device)
+        probability = self.probability(random_points)
+
+        self.eval()
+        with torch.no_grad():
+            images = self.decoder(random_points)
+        self.train()
+
+        images = images.view(-1, 3, self.image_width, self.image_height)
+        dataloaders = DataLoader(TensorDataset(images, probability), shuffle=True)
+        return dataloaders
     
     # Function to pre-calculating the output into latent space in order to calculate the likelihood distribution for random point (the below function)
     # input: Dataset
+    def dataset_latent_space(self, dataset):
+        return 0
 
-    # Encoding Dataset into latent space has to be implemented
-    # input: Dataset
-    # output: List of point/(mean,variance) which one is easier to calculate the likelihood distribution for random point
+    # Encoding random points into latent space has to be implemented
+    # input: Random points
+    # output: probability of the random points -> [batch_size, class_num(=100)]
+    def probability(self, random_points):
+        return 0
+    
 
-    # Training function has to be implemented
-    # input: Dataset, epochs
-    # output: void (maybe loading bar in terminal)
     def train_model(self, dataloaders, epochs):
         since = time.time()
 
