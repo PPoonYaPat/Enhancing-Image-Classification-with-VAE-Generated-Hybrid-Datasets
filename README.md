@@ -1,6 +1,6 @@
 # **Enhancing Image Classification with VAE-Generated Hybrid Datasets**
 
-This project aims to develop an new approach to improve the performance of Convolutional Neural Networks (CNNs) for image classification by using Variational Autoencoder (VAE)-generated hybrid datasets. The hybrid datasets combine features from different classes in a single image, which helps the CNN improve the classification accuracy.
+This project aims to develop an new approach to improve the performance of Convolutional Neural Networks (CNNs) for image classification by using Variational Autoencoder (VAE)-generated hybrid datasets. The hybrid datasets combine features from different classes in a single image, which helps the CNN improve the classification accuracy. This project use the CIFAR-100 as training sets, which has 100 classes containing 600 images each (500 images for training and 100 images for testing).
 
 
 ## **Motivation**
@@ -68,3 +68,4 @@ The following libraries are required for this project. The versions listed below
 3. `torch` 2.6.0+cpu
 4. `torchvision` 0.21.0+cpu
 5. `matplotlib` 3.10.1
+6. `torchsummary` 1.5.1
