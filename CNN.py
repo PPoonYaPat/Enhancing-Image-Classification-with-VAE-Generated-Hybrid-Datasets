@@ -75,7 +75,7 @@ class CNN(nn.Module):
                     self.optimizer.zero_grad()
 
                     with torch.set_grad_enabled(phase == 'train'):
-                        outputs = self.model(inputs)
+                        outputs = self.forward(inputs)
                         loss = ce_criterion(outputs, labels) # here is the average of each batch
                         _, preds = torch.max(outputs, 1)
 
@@ -143,7 +143,7 @@ class CNN(nn.Module):
                     self.optimizer.zero_grad()
 
                     with torch.set_grad_enabled(phase == 'train'):
-                        outputs = self.model(inputs)
+                        outputs = self.forward(inputs)
                         outputs.softmax(dim=1)
                         loss = mse_criterion(outputs, expected_probabilities)
 
