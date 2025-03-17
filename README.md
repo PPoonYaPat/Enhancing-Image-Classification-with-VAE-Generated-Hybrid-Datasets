@@ -40,7 +40,7 @@ Below is a visualization of the latent space, where each cluster represents a cl
 - **Step 2**: Calculate the likelihood of the point belonging to each class (e.g., "20% TypeA + 80% TypeB").
 - **Step 3**: Decode the point to create a new hybrid image.
 
-(Mathematics behind this still in progress)
+Mathematics behind this can be refered to [this](point_probs/point_probs.pdf)
 
 ## **Brief Step-by-Step Algorithm**
 
