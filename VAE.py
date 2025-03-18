@@ -7,12 +7,14 @@ from torch.optim.adam import Adam
 from torch.utils.data import DataLoader, TensorDataset
 import copy
 import time
+from collections import defaultdict
 
 class VAE(nn.Module):
 
-    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, optimizer):
+    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, optimizer, class_num):
         super(VAE, self).__init__()
 
+        self.class_num = class_num
         self.device = device
         self.image_width = image_width
         self.image_height = image_height
@@ -83,7 +85,33 @@ class VAE(nn.Module):
     # Function to pre-calculating the output into latent space in order to calculate the likelihood distribution for random point (the below function)
     # input: Dataset
     def dataset_latent_space(self, dataset):
-        return 0
+        self.eval()
+        self.class_lists_mu = [[] for _ in range(self.class_num)]
+        self.class_lists_var = [[] for _ in range(self.class_num)]
+        self.class_mu = [None] * self.class_num
+        self.class_var = [None] * self.class_num
+
+        for _, (images, labels) in enumerate(dataset):
+            for (image, label) in zip(images, labels):
+                with torch.no_grad():
+                    mu, logvar = self.encode(image.view(-1, self.input_dim).to(self.device)).squeeze(0)
+                    var = torch.exp(logvar)
+                    self.class_lists_mu[label.item()].append(mu)
+                    self.class_lists_var[label.item()].append(var)
+        
+        for idx in range(self.class_num):
+            mu = 0.0
+            for i in range(len(self.class_lists_mu[idx])):
+                mu += self.class_lists_mu[idx][i]
+            mu = mu / len(self.class_lists_mu[idx])
+
+            var = 0.0
+            for i in range(len(self.class_lists_var[idx])):
+                var += self.class_lists_var[idx][i] + (self.class_lists_mu[idx][i] - mu).pow(2)
+            var = var / len(self.class_lists_var[idx])
+
+            self.class_mu[idx] = mu
+            self.class_var[idx] = var
 
     # Encoding random points into latent space has to be implemented
     # input: Random points
@@ -93,6 +121,7 @@ class VAE(nn.Module):
     
 
     def train_model(self, dataloaders, epochs):
+        self.train()
         since = time.time()
 
         test_loss_history = []
