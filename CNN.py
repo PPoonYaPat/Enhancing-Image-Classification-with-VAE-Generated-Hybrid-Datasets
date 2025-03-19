@@ -8,13 +8,13 @@ import copy
 import time
 
 class CNN(nn.Module):
-    def __init__(self, image_width, image_height, device, optimizer):
+    def __init__(self, image_width, image_height, device, learning_rate):
         super(CNN, self).__init__()
 
         self.device = device
         self.image_width = image_width
         self.image_height = image_height
-        self.optimizer = optimizer
+        self.optimizer = Adam(self.parameters(), lr=learning_rate)
 
         self.layer1 = self.ConvModule(3, 64)
         self.layer2 = self.ConvModule(64, 128)

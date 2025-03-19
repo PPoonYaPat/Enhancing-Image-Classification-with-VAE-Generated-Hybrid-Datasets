@@ -10,7 +10,7 @@ import time
 
 class VAE(nn.Module):
 
-    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, optimizer, class_num):
+    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, learning_rate, class_num):
         super(VAE, self).__init__()
 
         self.class_num = class_num
@@ -18,7 +18,7 @@ class VAE(nn.Module):
         self.image_width = image_width
         self.image_height = image_height
         self.input_dim = image_width * image_height * 3 # RGB-channel
-        self.optimizer = optimizer
+        self.optimizer = Adam(self.parameters(), lr=learning_rate)
         self.gamma = 1e-5
 
         # Encoder
