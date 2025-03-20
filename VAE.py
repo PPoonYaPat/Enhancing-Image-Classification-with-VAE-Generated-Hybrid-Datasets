@@ -18,7 +18,6 @@ class VAE(nn.Module):
         self.image_width = image_width
         self.image_height = image_height
         self.input_dim = image_width * image_height * 3 # RGB-channel
-        self.optimizer = Adam(self.parameters(), lr=learning_rate)
         self.gamma = 1e-5
 
         # Encoder
@@ -42,6 +41,8 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim, self.input_dim),
             nn.Sigmoid()
         )
+
+        self.optimizer = Adam(self.parameters(), lr=learning_rate)
 
     def encode(self, x):
         x = self.encoder(x)
@@ -140,7 +141,7 @@ class VAE(nn.Module):
             class_prob_normalized = [p / sum for p in class_prob]
             probs.append(class_prob_normalized)
 
-        return torch.tensor(probs)
+        return torch.tensor(probs).to(self.device)
         
     
 

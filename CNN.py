@@ -14,7 +14,6 @@ class CNN(nn.Module):
         self.device = device
         self.image_width = image_width
         self.image_height = image_height
-        self.optimizer = Adam(self.parameters(), lr=learning_rate)
 
         self.layer1 = self.ConvModule(3, 64)
         self.layer2 = self.ConvModule(64, 128)
@@ -23,12 +22,14 @@ class CNN(nn.Module):
 
         self.fc = nn.Sequential(
             nn.Flatten(),
-            nn.Linear((image_width/16)*(image_height/16)*512, 1024),
+            nn.Linear((int)(image_width/16)*(int)(image_height/16)*512, 1024),
             nn.ReLU(),
             nn.Linear(1024, 512),
             nn.ReLU(),
             nn.Linear(512, 10)
         )
+
+        self.optimizer = Adam(self.parameters(), lr=learning_rate)
 
     def forward(self, x):
         x = self.layer1(x)
