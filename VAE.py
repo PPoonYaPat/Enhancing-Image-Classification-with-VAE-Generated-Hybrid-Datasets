@@ -10,7 +10,7 @@ import time
 
 class VAE(nn.Module):
 
-    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, learning_rate, class_num):
+    def __init__(self, image_width, image_height, hidden_dim, latent_dim, device, learning_rate, class_num, batch_size):
         super(VAE, self).__init__()
 
         self.class_num = class_num
@@ -19,6 +19,7 @@ class VAE(nn.Module):
         self.image_height = image_height
         self.input_dim = image_width * image_height * 3 # RGB-channel
         self.gamma = 1e-5
+        self.batch_size = batch_size
 
         # Encoder
         self.encoder = nn.Sequential(
@@ -80,11 +81,11 @@ class VAE(nn.Module):
         self.train()
 
         images = images.view(-1, 3, self.image_width, self.image_height)
-        dataloaders = DataLoader(TensorDataset(images, probability), shuffle=True)
+        dataloaders = DataLoader(TensorDataset(images, probability), batch_size=self.batch_size, shuffle=True)
         return dataloaders
     
     # Function to pre-calculating the output into latent space in order to calculate the likelihood distribution for random point (the below function)
-    # input: Dataset
+    # input: Dataset with extended labels -> [images, labels]
     def calculate_class_mu_var(self, dataset):
         self.eval()
         self.class_lists_mu = [[] for _ in range(self.class_num)]
@@ -94,14 +95,15 @@ class VAE(nn.Module):
 
         for _, (images, labels) in enumerate(dataset):
             for (image, label) in zip(images, labels):
+                class_index = torch.argmax(label).item()
                 with torch.no_grad():
                     mu, logvar = self.encode(image.view(-1, self.input_dim).to(self.device)).squeeze(0)
                 var = torch.exp(logvar)
-                self.class_lists_mu[label.item()].append(mu)
-                self.class_lists_var[label.item()].append(var)
+                self.class_lists_mu[class_index].append(mu)
+                self.class_lists_var[class_index].append(var)
         
-        for idx in range(self.class_num):
 
+        for idx in range(self.class_num):
             mu = self.class_lists_mu[idx].sum() / len(self.class_lists_mu[idx])
 
             var = 0.0
