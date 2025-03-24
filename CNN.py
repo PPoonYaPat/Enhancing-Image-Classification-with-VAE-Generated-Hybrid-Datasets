@@ -7,13 +7,16 @@ from torch.optim.adam import Adam
 import copy
 import time
 
+import math
+
 class CNN(nn.Module):
-    def __init__(self, image_width, image_height, device, learning_rate):
+    def __init__(self, image_width, image_height, device, learning_rate, class_num):
         super(CNN, self).__init__()
 
         self.device = device
         self.image_width = image_width
         self.image_height = image_height
+        self.class_num = class_num
 
         self.layer1 = self.ConvModule(3, 64)
         self.layer2 = self.ConvModule(64, 128)
@@ -26,7 +29,7 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.Linear(1024, 512),
             nn.ReLU(),
-            nn.Linear(512, 10)
+            nn.Linear(512, self.class_num)
         )
 
         self.optimizer = Adam(self.parameters(), lr=learning_rate)
@@ -46,7 +49,7 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2,2)
         )
-    
+
     def train_normal_model(self, dataloaders, epochs):
         since = time.time()
         ce_criterion = nn.CrossEntropyLoss()
@@ -117,7 +120,6 @@ class CNN(nn.Module):
 
     def train_hybrid_model(self, dataloaders, epochs):
         since = time.time()
-        mse_criterion = nn.MSELoss()
 
         test_acc_history = []
         test_loss_history = []
@@ -135,7 +137,7 @@ class CNN(nn.Module):
                     self.train()
                 else:
                     self.eval()
-                
+
                 running_loss = 0.0
                 running_corrects = 0
 
@@ -147,11 +149,28 @@ class CNN(nn.Module):
 
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = self.forward(inputs)
-                        outputs.softmax(dim=1)
-                        loss = mse_criterion(outputs, expected_probabilities)
+                        outputs = outputs.softmax(dim=1)
 
-                        _, preds = torch.max(outputs, 1)
-                        _, expected_preds = torch.max(expected_probabilities, 1)
+                        # Compute Cross-Entropy Loss manually
+                        loss = -(expected_probabilities * torch.log(outputs + 1e-8)).sum(dim=1).mean()
+
+                        if math.isnan(loss.item()):
+                            print("Loss is NaN")
+                            print("Outputs - Min:", outputs.min().item())
+                            print("Outputs - Max:", outputs.max().item())
+                            print("Outputs - Row sums:", outputs.sum(dim=1))
+                            print("Outputs contain NaN:", torch.isnan(outputs).any())
+
+                            print("Expected probabilities - Min:", expected_probabilities.min().item())
+                            print("Expected probabilities - Max:", expected_probabilities.max().item())
+                            print("Expected probabilities - Row sums:", expected_probabilities.sum(dim=1))
+                            print("Expected probabilities contain NaN:", torch.isnan(expected_probabilities).any())
+                            #for  (i, j) in zip(outputs, expected_probabilities):
+                            #    print(i, j)
+                            break
+
+                        preds = torch.argmax(outputs, dim=1)
+                        expected_preds = torch.argmax(expected_probabilities, dim=1)
 
                         if phase == 'train':
                             loss.backward()
@@ -159,7 +178,7 @@ class CNN(nn.Module):
 
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == expected_preds)
-                
+
                 epoch_loss = running_loss / len(dataloaders[phase].dataset)
                 epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
 
@@ -174,12 +193,15 @@ class CNN(nn.Module):
                 if phase == 'train':
                     train_acc_history.append(epoch_acc.cpu().numpy())
                     train_loss_history.append(epoch_loss)
-                
+
             print()
+
 
         time_elapsed = time.time() - since
         print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
         print('Best test Acc: {:4f}'.format(best_acc))
+        print("-------------------")
+        print()
 
         history_dict = {'train_loss':train_loss_history, 'train_accuracy':train_acc_history, 'test_loss':test_loss_history, 'test_accuracy':test_acc_history}
         return best_model_wts, history_dict
