@@ -38,7 +38,7 @@ class DataTraining:
     def load_CNN_data(self):
         self.transforms_CNN = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # Normalize to [-1, 1]
             transforms.RandomRotation(30),
             transforms.RandomHorizontalFlip(),
             transforms.ColorJitter()
@@ -49,7 +49,10 @@ class DataTraining:
         self.CNN_test_dl = DataLoader(self.CNN_test, batch_size=self.batch_size, shuffle=False)
 
     def load_VAE_data(self):
-        self.transforms_VAE = transforms.Compose([transforms.ToTensor()])
+        self.transforms_VAE = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to [-1, 1]
+        ])
         self.VAE_train = CIFAR100(self.path, train=True, download=True, transform=self.transforms_VAE)
         self.VAE_test = CIFAR100(self.path, train=False, download=True, transform=self.transforms_VAE)
         extended_label_VAE_train = []

@@ -17,7 +17,6 @@ class VAE(nn.Module):
         self.device = device
         self.image_width = image_width
         self.image_height = image_height
-        self.input_dim = image_width * image_height * 3 # RGB-channel -> wronggggggggg
         self.gamma = 1e-3
         self.batch_size = batch_size
         self.latent_dim = latent_dim
@@ -107,7 +106,7 @@ class VAE(nn.Module):
         return x_hat, mean, logvar
 
     def loss(self, x, x_hat, mean, logvar):
-        reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
+        reproduction_loss = nn.functional.mse_loss(x_hat, x, reduction='sum')
         KLD = - 0.5 * torch.sum(1+ logvar - mean.pow(2) - logvar.exp())
         return reproduction_loss + KLD
     
@@ -201,7 +200,6 @@ class VAE(nn.Module):
                     mu, logvar = self.encode(image.to(self.device))
                 mu = mu.squeeze(0)
                 var = torch.exp(logvar).squeeze(0)
-                var = torch.clamp(var, min=1e-8)
                 self.class_lists_mu[class_index].append(mu)
                 self.class_lists_var[class_index].append(var)
 
@@ -221,51 +219,39 @@ class VAE(nn.Module):
             self.class_var[idx] = var
 
 
-    # P(Normal(mu,var) = x)
-    def probs(self, x, mu, var):
-        var_temp = var.clone()
-        var = torch.clamp(var, min=1e-8)
-        if var_temp != var:
-            print('variance from probs function is clamped')
-        normalized_x = (x - mu) / var
-        return torch.special.ndtr(normalized_x + self.gamma) - torch.special.ndtr(normalized_x - self.gamma)
+    # log of PDF of normal distribution for p(z|c)
+    def log_pdf(self, z, mu, var):
+        exponent = -0.5 * ((z - mu) ** 2 / var)
+        log_normalization = -0.5 * (torch.log(2.0 * torch.tensor(np.pi, device=self.device)) + torch.log(var))
+        log_pdf = log_normalization + exponent
+        return log_pdf
 
 
-    # input: Random points in latent space -> [batch_size, 2] -> FIX
-    # output: probability of the random points -> [batch_size, class_num(=100)]
+    # input: Random points in latent space -> [batch_size, latent_dim] -> FIX
+    # output: probability of the random points -> [batch_size, class_num]
     def probability(self, random_points):
         probs = []
+        
         for point in random_points:
-            x, y = point[0], point[1]
-            sum = 0.0
-            class_prob = []
+            class_log_probs = []
+            
             for c in range(self.class_num):
-                mu_x = self.class_mu[c][0]
-                mu_y = self.class_mu[c][1]
-                var_x = self.class_var[c][0]
-                var_y = self.class_var[c][1]
-
-                # calculate p(z|c) = p((x,y)|c) = p(x|c) p(y|c)
-                prob_x = self.probs(x, mu_x, var_x)
-                prob_y = self.probs(y, mu_y, var_y)
-                class_prob.append(prob_x * prob_y)
-                sum += prob_x * prob_y
-
-            if sum == 0:
-                class_prob_normalized = [0.0 for _ in class_prob]
-                print('sum is zero')
-                print(x, y)
-                for c in range(self.class_num):
-                    mu_x = self.class_mu[c][0]
-                    mu_y = self.class_mu[c][1]
-                    var_x = self.class_var[c][0]
-                    var_y = self.class_var[c][1]
-                    prob_x = self.probs(x, mu_x, var_x)
-                    prob_y = self.probs(y, mu_y, var_y)
-                    print(prob_x, prob_y)
-            else:
-                class_prob_normalized = [p / sum for p in class_prob]
-
-            probs.append(class_prob_normalized)
-
+                mu = self.class_mu[c]
+                var = self.class_var[c]
+                
+                log_prob = 0.0
+                for dim in range(self.latent_dim):
+                    log_prob += self.log_pdf(point[dim], mu[dim], var[dim])
+                class_log_probs.append(log_prob)
+            
+            # Convert log probabilities to actual probabilities using log-sum-exp trick
+            max_log_prob = max(class_log_probs)
+            
+            # Calculate exp(log_prob - max_log_prob) for all classes
+            exp_log_probs = [torch.exp(log_prob - max_log_prob) for log_prob in class_log_probs]
+            sum_exp_log_probs = sum(exp_log_probs)
+            
+            normalized_probs = [exp_prob / sum_exp_log_probs for exp_prob in exp_log_probs]
+            probs.append(normalized_probs)
+        
         return torch.tensor(probs).to(self.device)
